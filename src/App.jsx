@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import Country from "./components/Country";
 import Login from "./components/Login";
 import Logout from "./components/Logout";
+import { ToastProvider, useToast } from "./components/Toast";
 import {
   Theme,
   Button,
@@ -10,6 +11,7 @@ import {
   Badge,
   Container,
   Grid,
+  Tooltip,
 } from "@radix-ui/themes";
 import { SunIcon, MoonIcon } from "@radix-ui/react-icons";
 import "@radix-ui/themes/styles.css";
@@ -20,6 +22,7 @@ import { getUser } from "./Utils.js";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 
 function App() {
+  const toast = useToast && useToast();
   const [appearance, setAppearance] = useState("dark");
   // const apiEndpoint = "https://medalsapi.azurewebsites.net/api/country";
   const apiEndpoint = "https://medalsapi.azurewebsites.net/jwtapi/country";
@@ -163,14 +166,14 @@ function App() {
         ex.response &&
         (ex.response.status === 401 || ex.response.status === 403)
       ) {
-        alert("You are not authorized to complete this request");
+        toast && toast("You are not authorized to complete this request", "error");
       } else if (ex.response) {
-        console.log(ex.response);
+        toast && toast("Request failed: " + (ex.response?.data?.message || ex.message), "error");
       } else {
-        console.log("Request failed");
+        toast && toast("Request failed", "error");
       }
     }
-    console.log("ADD");
+    toast && toast("Country add requested", "info");
   }
   async function handleDelete(countryId) {
     const originalCountries = countries;
@@ -184,20 +187,18 @@ function App() {
     } catch (ex) {
       if (ex.response && ex.response.status === 404) {
         // country already deleted
-        console.log(
-          "The record does not exist - it may have already been deleted"
-        );
+        toast && toast("The record does not exist - it may have already been deleted", "error");
       } else {
         setCountries(originalCountries);
         if (
           ex.response &&
           (ex.response.status === 401 || ex.response.status === 403)
         ) {
-          alert("You are not authorized to complete this request");
+          toast && toast("You are not authorized to complete this request", "error");
         } else if (ex.response) {
-          console.log(ex.response);
+          toast && toast("Request failed: " + (ex.response?.data?.message || ex.message), "error");
         } else {
-          console.log("Request failed");
+          toast && toast("Request failed", "error");
         }
       }
     }
@@ -231,9 +232,7 @@ function App() {
         country[medal.name].saved_value = country[medal.name].page_value;
       }
     });
-    console.log(
-      `json patch for id: ${countryId}: ${JSON.stringify(jsonPatch)}`
-    );
+    toast && toast(`Saving changes for country id: ${countryId}`, "info");
     // update state
     setCountries(mutableCountries);
 
@@ -246,18 +245,16 @@ function App() {
     } catch (ex) {
       if (ex.response && ex.response.status === 404) {
         // country already deleted
-        console.log(
-          "The record does not exist - it may have already been deleted"
-        );
+        toast && toast("The record does not exist - it may have already been deleted", "error");
       } else if (
         ex.response &&
         (ex.response.status === 401 || ex.response.status === 403)
       ) {
-        alert("You are not authorized to complete this request");
+        toast && toast("You are not authorized to complete this request", "error");
         // to simplify, I am reloading the page to restore "saved" values
         window.location.reload(false);
       } else {
-        alert("An error occurred while updating");
+        toast && toast("An error occurred while updating", "error");
         setCountries(originalCountries);
       }
     }
@@ -286,11 +283,11 @@ function App() {
         ex.response &&
         (ex.response.status === 401 || ex.response.status === 400)
       ) {
-        alert("Login failed");
+        toast && toast("Login failed", "error");
       } else if (ex.response) {
-        console.log(ex.response);
+        toast && toast("Request failed: " + (ex.response?.data?.message || ex.message), "error");
       } else {
-        console.log("Request failed");
+        toast && toast("Request failed", "error");
       }
     }
   }
@@ -313,15 +310,18 @@ function App() {
     return sum;
   }
 
-  return (
-    <Theme appearance={appearance}>
-      <Button
-        onClick={toggleAppearance}
-        style={{ position: "fixed", bottom: 20, right: 20, zIndex: 100 }}
-        variant="ghost"
-      >
-        {appearance === "dark" ? <MoonIcon /> : <SunIcon />}
-      </Button>
+    return (
+      <ToastProvider>
+        <Theme appearance={appearance}>
+      <Tooltip content={appearance === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+        <Button
+          onClick={toggleAppearance}
+          style={{ position: "fixed", bottom: 20, right: 20, zIndex: 100 }}
+          variant="ghost"
+        >
+          {appearance === "dark" ? <MoonIcon /> : <SunIcon />}
+        </Button>
+      </Tooltip>
       {user.authenticated ? (
         <Logout onLogout={handleLogout} />
       ) : (
@@ -355,7 +355,8 @@ function App() {
             />
           ))}
       </Grid>
-    </Theme>
+      </Theme>
+    </ToastProvider>
   );
 }
 
