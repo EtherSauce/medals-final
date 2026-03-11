@@ -24,6 +24,7 @@ import { HubConnectionBuilder } from "@microsoft/signalr";
 function App() {
   const toast = useToast && useToast();
   const [appearance, setAppearance] = useState("dark");
+  const [sortBy, setSortBy] = useState("name");
   // const apiEndpoint = "https://medalsapi.azurewebsites.net/api/country";
   const apiEndpoint = "https://medalsapi.azurewebsites.net/jwtapi/country";
   const hubEndpoint = "https://medalsapi.azurewebsites.net/medalsHub";
@@ -313,51 +314,78 @@ function App() {
     return (
       <ToastProvider>
         <Theme appearance={appearance}>
-      <Tooltip content={appearance === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
-        <Button
-          onClick={toggleAppearance}
-          style={{ position: "fixed", bottom: 20, right: 20, zIndex: 100 }}
-          variant="ghost"
-        >
-          {appearance === "dark" ? <MoonIcon /> : <SunIcon />}
-        </Button>
-      </Tooltip>
-      {user.authenticated ? (
-        <Logout onLogout={handleLogout} />
-      ) : (
-        <Login onLogin={handleLogin} />
-      )}
-      <Flex p="2" pl="8" className="fixedHeader" justify="between">
-        <Heading size="6">
-          Olympic Medals
-          <Badge variant="outline" ml="2">
-            <Heading size="6">{getAllMedalsTotal()}</Heading>
-          </Badge>
-        </Heading>
-        {user.canPost && <NewCountry onAdd={handleAdd} />}
-      </Flex>
-      <Container className="bg"></Container>
-      <Grid pt="2" gap="2" className="grid-container">
-        {countries
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .map((country) => (
-            <Country
-              key={country.id}
-              country={country}
-              medals={medals.current}
-              canDelete={user.canDelete}
-              canPatch={user.canPatch}
-              onDelete={handleDelete}
-              onSave={handleSave}
-              onReset={handleReset}
-              onIncrement={handleIncrement}
-              onDecrement={handleDecrement}
-            />
-          ))}
-      </Grid>
-      </Theme>
-    </ToastProvider>
-  );
+          <Tooltip content={appearance === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+            <Button
+              onClick={toggleAppearance}
+              style={{ position: "fixed", bottom: 20, right: 20, zIndex: 100 }}
+              variant="ghost"
+            >
+              {appearance === "dark" ? <MoonIcon /> : <SunIcon />}
+            </Button>
+          </Tooltip>
+          {user.authenticated ? (
+            <Logout onLogout={handleLogout} />
+          ) : (
+            <Login onLogin={handleLogin} />
+          )}
+          <Flex p="2" pl="8" className="fixedHeader" justify="between" align="center">
+            <Heading size="6">
+              Olympic Medals
+              <Badge variant="outline" ml="2">
+                <Heading size="6">{getAllMedalsTotal()}</Heading>
+              </Badge>
+            </Heading>
+            <Flex gap="3" align="center">
+              <label htmlFor="sort-select" style={{ fontWeight: 500 }}>Sort by:</label>
+              <select
+                id="sort-select"
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                style={{ fontSize: 16, padding: '2px 8px', borderRadius: 4 }}
+              >
+                <option value="name">Name (A-Z)</option>
+                <option value="total">Total Medals</option>
+                <option value="gold">Gold</option>
+                <option value="silver">Silver</option>
+                <option value="bronze">Bronze</option>
+              </select>
+              {user.canPost && <NewCountry onAdd={handleAdd} />}
+            </Flex>
+          </Flex>
+          <Container className="bg"></Container>
+          <Grid pt="2" gap="2" className="grid-container">
+            {countries
+              .slice()
+              .sort((a, b) => {
+                if (sortBy === "name") {
+                  return a.name.localeCompare(b.name);
+                } else if (sortBy === "total") {
+                  const aTotal = medals.current.reduce((sum, m) => sum + a[m.name].page_value, 0);
+                  const bTotal = medals.current.reduce((sum, m) => sum + b[m.name].page_value, 0);
+                  return bTotal - aTotal;
+                } else if (["gold", "silver", "bronze"].includes(sortBy)) {
+                  return b[sortBy].page_value - a[sortBy].page_value;
+                }
+                return 0;
+              })
+              .map((country) => (
+                <Country
+                  key={country.id}
+                  country={country}
+                  medals={medals.current}
+                  canDelete={user.canDelete}
+                  canPatch={user.canPatch}
+                  onDelete={handleDelete}
+                  onSave={handleSave}
+                  onReset={handleReset}
+                  onIncrement={handleIncrement}
+                  onDecrement={handleDecrement}
+                />
+              ))}
+          </Grid>
+        </Theme>
+      </ToastProvider>
+    );
 }
 
 export default App;
